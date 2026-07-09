@@ -1,0 +1,4 @@
+.agents/
+backend/node_modules/
+backend/.env
+npm-debug.log*
