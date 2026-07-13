@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pakrose Enterprises Dashboard</title>
+    <link rel="icon" type="image/jpeg" href="../public/oklogo.jpeg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
@@ -20,15 +21,32 @@
               <h1 id="portalTitle" class="mt-1 text-2xl font-semibold tracking-tight text-white"></h1>
             </div>
           </div>
-          <button
-            id="signOutButton"
-            type="button"
-            class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-          >
-            Sign Out
-          </button>
+          <div class="flex items-center gap-3">
+            <button
+              id="workspaceBackButton"
+              type="button"
+              class="hidden rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+            >
+              Back
+            </button>
+            <button
+              id="getInButton"
+              type="button"
+              class="rounded-xl border border-teal-400/30 bg-teal-500/10 px-4 py-2 text-sm font-semibold text-teal-100 transition hover:bg-teal-500/20"
+            >
+              Get In
+            </button>
+            <button
+              id="signOutButton"
+              type="button"
+              class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+            >
+              Sign Out
+            </button>
+          </div>
         </header>
 
+        <main id="dashboardHome" class="contents">
         <section class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div id="summaryPanel" class="rounded-2xl border p-6 shadow-2xl">
             <p class="text-sm font-medium text-slate-400">Global trade control tower</p>
@@ -143,6 +161,132 @@
                 <li>Resolve customs HS code mismatch on container PKR-EU-19.</li>
                 <li>Confirm payment release against two completed dispatches.</li>
               </ul>
+            </div>
+          </div>
+        </section>
+        </main>
+
+        <section
+          id="pakroseManagementScreen"
+          class="hidden rounded-3xl border border-teal-900/40 bg-slate-900/85 p-6 shadow-2xl backdrop-blur"
+        >
+          <div class="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-sm font-medium uppercase tracking-[0.24em] text-teal-300">Pakrose workspace</p>
+              <h2 id="managementTitle" class="mt-2 text-3xl font-semibold tracking-tight text-white">Funding sources</h2>
+              <p id="managementSubtitle" class="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                Open a main card to manage organizations, then open any organization to maintain expense entries in a sheet layout.
+              </p>
+            </div>
+            <div class="flex items-center gap-3">
+              <button
+                id="totalAmountButton"
+                type="button"
+                class="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+              >
+                Total Amount Left
+              </button>
+              <button
+                id="createOrganizationButton"
+                type="button"
+                class="hidden rounded-xl border border-teal-400/30 bg-teal-500/10 px-4 py-2 text-sm font-semibold text-teal-100 transition hover:bg-teal-500/20"
+              >
+                Create New Organization
+              </button>
+            </div>
+          </div>
+
+          <div id="managementContent" class="mt-6"></div>
+        </section>
+
+        <section
+          id="fundingModal"
+          class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+        >
+          <div class="w-full max-w-4xl rounded-3xl border border-teal-900/40 bg-slate-900/95 p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+              <div>
+                <p class="text-sm font-medium uppercase tracking-[0.24em] text-teal-300">Funding Ledger</p>
+                <h3 class="mt-2 text-2xl font-semibold text-white">Account money history</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">
+                  Add new money whenever it is received. Account total and amount left are calculated automatically.
+                </p>
+              </div>
+              <button
+                id="closeFundingModalButton"
+                type="button"
+                class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+              >
+                Close
+              </button>
+            </div>
+
+            <div class="mt-6 grid gap-4 md:grid-cols-3">
+              <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Account Total</p>
+                <p id="fundingAccountTotal" class="mt-3 text-2xl font-semibold text-white"></p>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Spent</p>
+                <p id="fundingSpentTotal" class="mt-3 text-2xl font-semibold text-white"></p>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Amount Left</p>
+                <p id="fundingLeftTotal" class="mt-3 text-2xl font-semibold text-white"></p>
+              </div>
+            </div>
+
+            <div class="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+              <div class="grid gap-4 lg:grid-cols-[1fr_1fr_1.5fr_auto]">
+                <label>
+                  <span class="mb-2 block text-sm font-medium text-slate-300">Date</span>
+                  <input
+                    id="fundingDateInput"
+                    type="date"
+                    class="w-full rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-teal-400/60"
+                  />
+                </label>
+                <label>
+                  <span class="mb-2 block text-sm font-medium text-slate-300">Amount received</span>
+                  <input
+                    id="fundingAmountInput"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    class="w-full rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-teal-400/60"
+                  />
+                </label>
+                <label>
+                  <span class="mb-2 block text-sm font-medium text-slate-300">Note</span>
+                  <input
+                    id="fundingNoteInput"
+                    type="text"
+                    placeholder="Reason or source"
+                    class="w-full rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-teal-400/60"
+                  />
+                </label>
+                <button
+                  id="addFundingButton"
+                  type="button"
+                  class="rounded-xl border border-teal-400/30 bg-teal-500/10 px-5 py-3 text-sm font-semibold text-teal-100 transition hover:bg-teal-500/20 lg:self-end"
+                >
+                  Add Money
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-6 overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
+              <table class="min-w-full divide-y divide-white/10 text-left">
+                <thead>
+                  <tr class="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    <th class="px-4 py-3 font-medium">Date</th>
+                    <th class="px-4 py-3 font-medium">Amount added</th>
+                    <th class="px-4 py-3 font-medium">Note</th>
+                  </tr>
+                </thead>
+                <tbody id="fundingHistoryTable" class="divide-y divide-white/10"></tbody>
+              </table>
             </div>
           </div>
         </section>

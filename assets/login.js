@@ -1,10 +1,20 @@
 (function () {
   const backendUrl = document.body.dataset.backendUrl || 'http://localhost:4000';
   const sessionStorageKey = 'oms_auth_session';
+
+  function getCompanyAssetBase(company) {
+    if (company === 'pakrose') {
+      return '/pakrose';
+    }
+
+    return '/prime-fabric';
+  }
+
   const companyBranding = {
     prime_fabric: {
       pageTitle: 'Prime Fabric Pakistan Login',
       logo: 'PF',
+      logoPath: '/public/plogo.jpeg',
       companyName: 'Prime Fabric Pakistan',
       welcomeTitle: 'Industrial Stitching Portal',
       welcomeText:
@@ -18,6 +28,7 @@
     pakrose: {
       pageTitle: 'Pakrose Enterprises Login',
       logo: 'PE',
+      logoPath: '/public/oklogo.jpeg',
       companyName: 'Pakrose Enterprises',
       welcomeTitle: 'B2B Global Supply Chain Portal',
       welcomeText:
@@ -32,6 +43,7 @@
 
   const activeCompany = document.body.dataset.company || 'prime_fabric';
   const branding = companyBranding[activeCompany] || companyBranding.prime_fabric;
+  const companyAssetBase = getCompanyAssetBase(activeCompany);
 
   const elements = {
     companyName: document.getElementById('companyName'),
@@ -48,8 +60,8 @@
   document.title = branding.pageTitle;
   elements.companyName.innerText = branding.companyName;
   elements.welcomeTitle.innerText = branding.welcomeTitle;
-  elements.welcomeText.innerText = branding.welcomeText;
-  elements.logoBadge.innerText = branding.logo;
+  elements.welcomeText.innerText = '';
+  elements.welcomeText.classList.add('hidden');
 
   elements.pageShell.className =
     'relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12 ' +
@@ -59,9 +71,27 @@
     branding.panelClass;
   elements.heroGlow.className =
     'absolute inset-x-0 top-0 h-64 bg-gradient-to-b opacity-15 blur-3xl ' + branding.glowClass;
-  elements.logoBadge.className =
-    'mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-bold tracking-wide text-white shadow-lg ' +
-    branding.logoClass;
+  function renderLogoBadge() {
+    elements.logoBadge.innerHTML = '';
+
+    if (branding.logoPath) {
+      elements.logoBadge.className =
+        'mb-8 flex h-24 w-40 items-center justify-center rounded-3xl border border-white/10 bg-white px-4 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.35)]';
+      const logoImage = document.createElement('img');
+      logoImage.src = companyAssetBase + branding.logoPath;
+      logoImage.alt = branding.companyName + ' logo';
+      logoImage.className = 'h-full w-full object-contain';
+      elements.logoBadge.appendChild(logoImage);
+      return;
+    }
+
+    elements.logoBadge.className =
+      'mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br text-xl font-bold tracking-wide text-white shadow-lg ' +
+      branding.logoClass;
+    elements.logoBadge.innerText = branding.logo;
+  }
+
+  renderLogoBadge();
 
   function normalizePath(path) {
     return path.replace(/\/+$/, '') || '/';
