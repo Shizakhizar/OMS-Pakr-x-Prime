@@ -148,7 +148,8 @@
   const existingSession = loadStoredSession();
 
   if (existingSession && existingSession.company === activeCompany) {
-    clearStoredSession();
+    redirectToDashboard();
+    return;
   }
 
   function showMessage(message, type) {
@@ -278,13 +279,7 @@
     const session = loadStoredSession();
 
     if (session && session.company === activeCompany) {
-      clearStoredSession();
-
-      if (window.google && window.google.accounts && window.google.accounts.id) {
-        window.google.accounts.id.disableAutoSelect();
-      }
-
-      showMessage('Session cleared. Continue with Google again to access the dashboard.', 'error');
+      redirectToDashboard();
     }
   });
 })();

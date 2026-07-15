@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
-  <body data-company="pakrose" id="pageShell" class="min-h-screen bg-slate-950 text-slate-100">
+  <body data-company="pakrose" data-backend-url="http://localhost:4000" id="pageShell" class="min-h-screen bg-slate-950 text-slate-100">
     <div class="relative isolate min-h-screen overflow-hidden px-6 py-8 sm:px-10">
       <div id="heroGlow" class="absolute inset-x-0 top-0 h-64 bg-gradient-to-b opacity-20 blur-3xl"></div>
 
@@ -106,64 +106,6 @@
           </div>
         </section>
 
-        <section id="activityPanel" class="rounded-2xl border p-6 shadow-2xl">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-slate-400">Supply chain modules</p>
-              <h2 class="mt-1 text-xl font-semibold text-white">Pakrose trading and logistics overview</h2>
-            </div>
-          </div>
-          <div class="mt-6 grid gap-4 md:grid-cols-3">
-            <div class="rounded-xl border border-white/10 bg-black/10 p-4">
-              <p class="text-sm font-medium text-slate-300">Buyer orders</p>
-              <p class="mt-2 text-sm leading-6 text-slate-400">Track RFQs, confirmed purchase orders, and pending negotiations across buyer accounts.</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/10 p-4">
-              <p class="text-sm font-medium text-slate-300">Shipment tracking</p>
-              <p class="mt-2 text-sm leading-6 text-slate-400">Monitor vessel bookings, container milestones, and country-specific delivery timelines.</p>
-            </div>
-            <div class="rounded-xl border border-white/10 bg-black/10 p-4">
-              <p class="text-sm font-medium text-slate-300">Commercial documents</p>
-              <p class="mt-2 text-sm leading-6 text-slate-400">Review invoices, packing lists, and customs files before dispatch and settlement.</p>
-            </div>
-          </div>
-
-          <div class="mt-6 grid gap-4 xl:grid-cols-2">
-            <div class="rounded-xl border border-white/10 bg-black/10 p-5">
-              <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-slate-300">Lane performance</p>
-                <span class="rounded-full bg-teal-500/15 px-3 py-1 text-xs font-semibold text-teal-200">Updated</span>
-              </div>
-              <div class="mt-4 space-y-3">
-                <div class="flex items-center justify-between text-sm text-slate-300">
-                  <span>Karachi -> Rotterdam</span>
-                  <span class="font-semibold text-white">On schedule</span>
-                </div>
-                <div class="flex items-center justify-between text-sm text-slate-300">
-                  <span>Lahore -> Jebel Ali</span>
-                  <span class="font-semibold text-amber-300">Docs pending</span>
-                </div>
-                <div class="flex items-center justify-between text-sm text-slate-300">
-                  <span>Karachi -> New York</span>
-                  <span class="font-semibold text-white">Booked</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-xl border border-white/10 bg-black/10 p-5">
-              <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-slate-300">Commercial action queue</p>
-                <span class="rounded-full bg-slate-700/60 px-3 py-1 text-xs font-semibold text-slate-200">4 items</span>
-              </div>
-              <ul class="mt-4 space-y-3 text-sm leading-6 text-slate-400">
-                <li>Approve final PI revision for buyer account PE-US-04.</li>
-                <li>Issue updated ETA to the Germany distributor group.</li>
-                <li>Resolve customs HS code mismatch on container PKR-EU-19.</li>
-                <li>Confirm payment release against two completed dispatches.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
         </main>
 
         <section
@@ -287,6 +229,94 @@
                 </thead>
                 <tbody id="fundingHistoryTable" class="divide-y divide-white/10"></tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="createEntryModal"
+          class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+        >
+          <div class="w-full max-w-xl rounded-3xl border border-teal-900/40 bg-slate-900/95 p-6 shadow-2xl">
+            <div class="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+              <div>
+                <p id="createEntryModalEyebrow" class="text-sm font-medium uppercase tracking-[0.24em] text-teal-300">
+                  Pakrose workspace
+                </p>
+                <h3 id="createEntryModalTitle" class="mt-2 text-2xl font-semibold text-white">Create New Organization</h3>
+                <p id="createEntryModalDescription" class="mt-2 text-sm leading-6 text-slate-400">
+                  Add a name below to create a new entry in this section.
+                </p>
+              </div>
+              <button
+                id="closeCreateEntryModalButton"
+                type="button"
+                class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+              >
+                Close
+              </button>
+            </div>
+
+            <div class="mt-6">
+              <label>
+                <span id="createEntryModalLabel" class="mb-2 block text-sm font-medium text-slate-300">Organization name</span>
+                <input
+                  id="createEntryModalInput"
+                  type="text"
+                  placeholder="Enter name"
+                  class="w-full rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-teal-400/60"
+                />
+              </label>
+              <p id="createEntryModalError" class="mt-3 hidden text-sm font-medium text-rose-300"></p>
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+              <button
+                id="cancelCreateEntryModalButton"
+                type="button"
+                class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                id="submitCreateEntryModalButton"
+                type="button"
+                class="rounded-xl border border-teal-400/30 bg-teal-500/10 px-5 py-2 text-sm font-semibold text-teal-100 transition hover:bg-teal-500/20"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="deleteConfirmModal"
+          class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+        >
+          <div class="w-full max-w-lg rounded-3xl border border-rose-900/40 bg-slate-900/95 p-6 shadow-2xl">
+            <div class="border-b border-white/10 pb-5">
+              <p class="text-sm font-medium uppercase tracking-[0.24em] text-rose-300">Confirm Deletion</p>
+              <h3 class="mt-2 text-2xl font-semibold text-white">Delete item?</h3>
+              <p id="deleteConfirmMessage" class="mt-2 text-sm leading-6 text-slate-400">
+                Are you sure you want to delete this item?
+              </p>
+            </div>
+
+            <div class="mt-6 flex items-center justify-end gap-3">
+              <button
+                id="cancelDeleteConfirmButton"
+                type="button"
+                class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirmDeleteConfirmButton"
+                type="button"
+                class="rounded-xl border border-rose-400/30 bg-rose-500/10 px-5 py-2 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </section>
