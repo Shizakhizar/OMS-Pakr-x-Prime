@@ -1,0 +1,45 @@
+{
+  "fundingHistory": [
+    {
+      "id": "0dffdfc4-b8d4-4961-93cf-94adf1e40834",
+      "date": "2026-07-13",
+      "amount": 1000,
+      "note": "Start",
+      "createdAt": "2026-07-13T11:46:09.319Z",
+      "createdBy": "shizakhizarf22@nutech.edu.pk"
+    }
+  ],
+  "government": [
+    {
+      "id": "3bec4e3f-e4b9-40ab-bcfa-e70753278e90",
+      "name": "HEC",
+      "createdAt": "2026-07-13T11:49:53.921Z",
+      "createdBy": "shizakhizarf22@nutech.edu.pk",
+      "entries": [
+        {
+          "id": "8de76ce7-27a8-4b4a-a507-724998d674c7",
+          "date": "2026-02-20",
+          "description": "Petrol",
+          "amountSpent": 100,
+          "paidBy": "Shiza",
+          "createdAt": "2026-07-13T11:56:28.820Z",
+          "createdBy": "shizakhizarf22@nutech.edu.pk"
+        }
+      ]
+    }
+  ],
+  "ngos": [],
+  "private": [],
+  "dailyExpenses": [],
+  "store": [
+    {
+      "id": "8c42c7df-e4ac-4e20-a972-62db393a22d2",
+      "name": "Soap",
+      "quantity": 0,
+      "createdAt": "2026-07-15T21:36:12.606Z",
+      "createdBy": "shizakhizar20@gmail.com",
+      "updatedAt": "2026-07-15T21:36:20.946Z"
+    }
+  ],
+  "templateVault": []
+}
