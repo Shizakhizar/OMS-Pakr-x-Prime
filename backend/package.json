@@ -5,7 +5,9 @@
   "description": "Backend scaffold for Google-authenticated OMS access control.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:pm2": "pm2 start ecosystem.config.js --env production",
+    "restart:pm2": "pm2 restart oms-backend"
   },
   "dependencies": {
     "cors": "^2.8.5",

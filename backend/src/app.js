@@ -4,9 +4,13 @@ const cors = require('cors');
 const { OAuth2Client } = require('google-auth-library');
 const { allowedEmails, isAllowedEmail } = require('./config/auth');
 const { JsonWorkspaceRepository } = require('./repositories/jsonWorkspaceRepository');
+const { JsonPrimeFabricRepository } = require('./repositories/jsonPrimeFabricRepository');
 const { WorkspaceService } = require('./services/workspaceService');
+const { PrimeFabricService } = require('./services/primeFabricService');
 const { createCompanyWorkspaceController } = require('./controllers/companyWorkspaceController');
+const { createPrimeFabricController } = require('./controllers/primeFabricController');
 const { createCompanyWorkspaceRoutes } = require('./routes/companyWorkspaceRoutes');
+const { createPrimeFabricRoutes } = require('./routes/primeFabricRoutes');
 const { errorHandler } = require('./middleware/errorHandler');
 
 function createApp() {
@@ -20,6 +24,11 @@ function createApp() {
   });
   const workspaceService = new WorkspaceService(repository);
   const workspaceController = createCompanyWorkspaceController(workspaceService);
+  const primeFabricRepository = new JsonPrimeFabricRepository({
+    filePath: path.join(__dirname, '..', 'data', 'prime-fabric', 'workspace.json'),
+  });
+  const primeFabricService = new PrimeFabricService(primeFabricRepository);
+  const primeFabricController = createPrimeFabricController(primeFabricService);
 
   app.use(
     cors(
@@ -43,7 +52,7 @@ function createApp() {
       authProvider: 'google',
       googleClientId,
       allowedEmailCount: allowedEmails.size,
-      enabledCompanies: ['pakrose'],
+      enabledCompanies: ['pakrose', 'prime_fabric'],
     });
   });
 
@@ -96,6 +105,7 @@ function createApp() {
   });
 
   app.use('/api/v1/companies/:companyId', createCompanyWorkspaceRoutes(workspaceController));
+  app.use('/api/v1/prime-fabric', createPrimeFabricRoutes(primeFabricController));
 
   app.use(errorHandler);
 

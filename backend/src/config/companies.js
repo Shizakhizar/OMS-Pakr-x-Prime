@@ -7,7 +7,7 @@ const companyConfigs = {
   prime_fabric: {
     id: 'prime_fabric',
     name: 'Prime Fabric Pakistan',
-    enabled: false,
+    enabled: true,
   },
 };
 

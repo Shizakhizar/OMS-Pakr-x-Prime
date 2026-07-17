@@ -1,0 +1,501 @@
+{
+  "projects": [
+    {
+      "id": "befe6917-7cf9-4fae-bf43-2f98d35a87e5",
+      "name": "hospital",
+      "startDate": "2026-07-17",
+      "deadlineDays": 10,
+      "status": "not_started",
+      "orderItems": [
+        {
+          "id": "order_26uki4t0mrotdqfn",
+          "itemType": "bed",
+          "targetPieces": 10,
+          "ratePerStitch": 10,
+          "clientAmount": 10000
+        },
+        {
+          "id": "order_0b4u3ieemrote4kq",
+          "itemType": "shoes",
+          "targetPieces": 15,
+          "ratePerStitch": 20,
+          "clientAmount": 30000
+        }
+      ],
+      "targetPieces": 25,
+      "advancePaymentReceived": 10000,
+      "clientAmount": 40000,
+      "lockedAmount": 40000,
+      "tailors": [
+        {
+          "id": "tailor_riljnqfvmroten39",
+          "name": "Shiza",
+          "assignedItemId": "order_26uki4t0mrotdqfn"
+        },
+        {
+          "id": "tailor_43hlmbocmrotepvx",
+          "name": "Ashir",
+          "assignedItemId": "order_0b4u3ieemrote4kq"
+        }
+      ],
+      "teamLocked": true,
+      "dailyEntries": [
+        {
+          "id": "bbde1857-6a71-4dd9-a23f-001e7435d3e9",
+          "date": "2026-07-17",
+          "quantities": [
+            1,
+            1
+          ],
+          "tailorItemQuantities": [
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "dailyPayout": 30,
+          "createdAt": "2026-07-17T10:49:55.150Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T11:08:30.892Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "94b7ed80-52ca-4481-8aee-3c7569695b1e",
+          "date": "2026-07-18",
+          "quantities": [
+            2,
+            1
+          ],
+          "tailorItemQuantities": [
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "dailyPayout": 40,
+          "createdAt": "2026-07-17T10:51:11.082Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:51:11.082Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "f2d746f4-c391-46b7-a718-802a8ae52dc8",
+          "date": "2026-07-19",
+          "quantities": [
+            2,
+            2
+          ],
+          "tailorItemQuantities": [
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "dailyPayout": 60,
+          "createdAt": "2026-07-17T10:51:53.885Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:51:53.885Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "b24088b4-e69e-4b32-bad1-55e1fc4a62af",
+          "date": "2026-07-20",
+          "quantities": [
+            1,
+            1
+          ],
+          "tailorItemQuantities": [
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "dailyPayout": 30,
+          "createdAt": "2026-07-17T10:52:29.718Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:52:29.718Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "51468050-f311-4d67-9a95-9c60411b0377",
+          "date": "2026-07-21",
+          "quantities": [
+            3,
+            3
+          ],
+          "tailorItemQuantities": [
+            [
+              3,
+              0
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "dailyPayout": 90,
+          "createdAt": "2026-07-17T10:52:54.702Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:52:54.702Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "33ba0444-3c02-488d-ab83-aea3fe4b1aa2",
+          "date": "2026-07-22",
+          "quantities": [
+            1,
+            1
+          ],
+          "tailorItemQuantities": [
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "dailyPayout": 30,
+          "createdAt": "2026-07-17T10:53:05.864Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:53:05.864Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "7c387318-24db-4f9d-b8e1-3f19d5e31ae6",
+          "date": "2026-07-23",
+          "quantities": [
+            0,
+            1
+          ],
+          "tailorItemQuantities": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "dailyPayout": 20,
+          "createdAt": "2026-07-17T10:53:35.675Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:53:35.675Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "a4875326-f0f0-493c-b0dd-ea0ce0946b9b",
+          "date": "2026-07-24",
+          "quantities": [
+            0,
+            1
+          ],
+          "tailorItemQuantities": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
+          "dailyPayout": 20,
+          "createdAt": "2026-07-17T10:54:24.366Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:54:24.366Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "eb516888-2684-49c1-a21f-24ba3224ab04",
+          "date": "2026-07-25",
+          "quantities": [
+            0,
+            4
+          ],
+          "tailorItemQuantities": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              4
+            ]
+          ],
+          "dailyPayout": 80,
+          "createdAt": "2026-07-17T10:55:10.233Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:55:10.233Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        }
+      ],
+      "weeklySettlements": [
+        {
+          "weekKey": "production_week_1_2026-07-17",
+          "paymentStatus": "paid",
+          "updatedAt": "2026-07-17T10:54:02.656Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        }
+      ],
+      "createdAt": "2026-07-17T10:48:21.593Z",
+      "createdBy": "shizakhizar20@gmail.com",
+      "updatedAt": "2026-07-17T11:08:30.892Z",
+      "updatedBy": "shizakhizar20@gmail.com"
+    },
+    {
+      "id": "e0be3a6b-bc35-4f4e-b80e-8c9034c33c24",
+      "name": "SCHOOL",
+      "startDate": "2026-07-17",
+      "deadlineDays": 7,
+      "status": "active",
+      "orderItems": [
+        {
+          "id": "order_hr1qdvg1mroof7ni",
+          "itemType": "BED",
+          "targetPieces": 10,
+          "ratePerStitch": 10,
+          "clientAmount": 10000
+        },
+        {
+          "id": "order_ow7p86i7mroog8y8",
+          "itemType": "Shoe",
+          "targetPieces": 10,
+          "ratePerStitch": 10,
+          "clientAmount": 10000
+        }
+      ],
+      "targetPieces": 20,
+      "advancePaymentReceived": 5000,
+      "clientAmount": 20000,
+      "lockedAmount": 20000,
+      "tailors": [
+        {
+          "id": "tailor_6cp2pv47mroof7ni",
+          "name": "Shiza"
+        },
+        {
+          "id": "tailor_6kln18cxmroofvxh",
+          "name": "Usman"
+        }
+      ],
+      "dailyEntries": [
+        {
+          "id": "83cecd03-c33d-446b-a722-8f492e83400b",
+          "date": "2026-07-17",
+          "quantities": [
+            5,
+            2
+          ],
+          "tailorItemQuantities": [
+            [
+              3,
+              2
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "dailyPayout": 70,
+          "createdAt": "2026-07-17T09:42:28.782Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:30:26.631Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "2cebb134-46a0-46dd-8b9b-b9aa8065e0e6",
+          "date": "2026-07-18",
+          "quantities": [
+            0,
+            2
+          ],
+          "tailorItemQuantities": [
+            [
+              0,
+              0
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          "dailyPayout": 20,
+          "createdAt": "2026-07-17T09:43:09.316Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T09:43:09.316Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "010413f0-dd10-4bb1-bdba-42008585f3b2",
+          "date": "2026-07-19",
+          "quantities": [
+            2,
+            0
+          ],
+          "tailorItemQuantities": [
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "dailyPayout": 20,
+          "createdAt": "2026-07-17T09:47:27.411Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T09:47:27.411Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "50342071-0a32-49e7-b37d-6d8e4f86bc18",
+          "date": "2026-07-20",
+          "quantities": [
+            2,
+            3
+          ],
+          "tailorItemQuantities": [
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              3
+            ]
+          ],
+          "dailyPayout": 50,
+          "createdAt": "2026-07-17T10:34:53.573Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:34:53.573Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "1355e34b-67ea-4464-89e4-ce34ea2156bb",
+          "date": "2026-07-21",
+          "quantities": [
+            2,
+            2
+          ],
+          "tailorItemQuantities": [
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              2
+            ]
+          ],
+          "dailyPayout": 40,
+          "createdAt": "2026-07-17T10:36:05.885Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T10:36:05.885Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        }
+      ],
+      "weeklySettlements": [],
+      "createdAt": "2026-07-17T08:35:37.125Z",
+      "createdBy": "shizakhizar20@gmail.com",
+      "updatedAt": "2026-07-17T10:36:05.886Z",
+      "updatedBy": "shizakhizar20@gmail.com"
+    }
+  ],
+  "attendanceRecords": {
+    "__meta": {
+      "team": [
+        {
+          "id": "attendance_tailor_1wk08xe9mroujjvf",
+          "name": "shiza"
+        },
+        {
+          "id": "attendance_tailor_wkfay6rcmrouk3o6",
+          "name": "usman"
+        },
+        {
+          "id": "attendance_tailor_nknyaj23mrouks0i",
+          "name": "aahsr"
+        },
+        {
+          "id": "attendance_tailor_xv56zuvsmroul58m",
+          "name": "wasw"
+        }
+      ]
+    },
+    "2026-07-17": [
+      {
+        "tailorId": "attendance_tailor_1wk08xe9mroujjvf",
+        "tailorName": "shiza",
+        "status": "present",
+        "checkIn": "10:00",
+        "checkOut": "17:00"
+      },
+      {
+        "tailorId": "attendance_tailor_wkfay6rcmrouk3o6",
+        "tailorName": "usman",
+        "status": "absent",
+        "checkIn": "",
+        "checkOut": ""
+      },
+      {
+        "tailorId": "attendance_tailor_nknyaj23mrouks0i",
+        "tailorName": "aahsr",
+        "status": "absent",
+        "checkIn": "",
+        "checkOut": ""
+      }
+    ],
+    "2026-07-18": [
+      {
+        "tailorId": "attendance_tailor_1wk08xe9mroujjvf",
+        "tailorName": "shiza",
+        "status": "present",
+        "checkIn": "14:22",
+        "checkOut": "16:34"
+      },
+      {
+        "tailorId": "attendance_tailor_wkfay6rcmrouk3o6",
+        "tailorName": "usman",
+        "status": "absent",
+        "checkIn": "",
+        "checkOut": ""
+      },
+      {
+        "tailorId": "attendance_tailor_nknyaj23mrouks0i",
+        "tailorName": "aahsr",
+        "status": "absent",
+        "checkIn": "",
+        "checkOut": ""
+      },
+      {
+        "tailorId": "attendance_tailor_xv56zuvsmroul58m",
+        "tailorName": "wasw",
+        "status": "absent",
+        "checkIn": "",
+        "checkOut": ""
+      }
+    ]
+  },
+  "storeItems": [],
+  "machineRecords": []
+}
