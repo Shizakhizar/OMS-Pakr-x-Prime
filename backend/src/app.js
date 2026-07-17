@@ -4,6 +4,7 @@ const cors = require('cors');
 const { OAuth2Client } = require('google-auth-library');
 const { allowedEmails, isAllowedEmail } = require('./config/auth');
 const { JsonWorkspaceRepository } = require('./repositories/jsonWorkspaceRepository');
+const { PostgresWorkspaceRepository } = require('./repositories/postgresWorkspaceRepository');
 const { JsonPrimeFabricRepository } = require('./repositories/jsonPrimeFabricRepository');
 const { WorkspaceService } = require('./services/workspaceService');
 const { PrimeFabricService } = require('./services/primeFabricService');
@@ -17,11 +18,17 @@ function createApp() {
   const app = express();
   const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
   const frontendOrigin = process.env.FRONTEND_ORIGIN || '';
+  const usePostgresPakrose = String(process.env.USE_POSTGRES_PAKROSE || '').trim().toLowerCase() === 'true';
   const googleClient = googleClientId ? new OAuth2Client(googleClientId) : null;
 
-  const repository = new JsonWorkspaceRepository({
+  const jsonWorkspaceRepository = new JsonWorkspaceRepository({
     dataDir: path.join(__dirname, '..', 'data', 'companies'),
   });
+  const repository = usePostgresPakrose
+    ? new PostgresWorkspaceRepository({
+        fallbackRepository: jsonWorkspaceRepository,
+      })
+    : jsonWorkspaceRepository;
   const workspaceService = new WorkspaceService(repository);
   const workspaceController = createCompanyWorkspaceController(workspaceService);
   const primeFabricRepository = new JsonPrimeFabricRepository({

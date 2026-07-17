@@ -1,6 +1,75 @@
 {
   "projects": [
     {
+      "id": "f1aa713a-1104-4278-ae96-b6e94fec2230",
+      "name": "maryam",
+      "startDate": "2026-07-17",
+      "deadlineDays": 10,
+      "status": "active",
+      "orderItems": [
+        {
+          "id": "order_vkmqzu4gmrphrryg",
+          "itemType": "socks",
+          "targetPieces": 10,
+          "ratePerStitch": 3,
+          "clientAmount": 10000
+        }
+      ],
+      "targetPieces": 10,
+      "advancePaymentReceived": 30000,
+      "clientAmount": 10000,
+      "lockedAmount": 10000,
+      "tailors": [
+        {
+          "id": "tailor_1tod76wvmrphsgln",
+          "name": "shiza",
+          "assignedItemId": "order_vkmqzu4gmrphrryg"
+        }
+      ],
+      "teamLocked": true,
+      "dailyEntries": [
+        {
+          "id": "7b5db6c3-3377-4233-98dd-f8b202fd06ab",
+          "date": "2026-07-17",
+          "quantities": [
+            2
+          ],
+          "tailorItemQuantities": [
+            [
+              2
+            ]
+          ],
+          "dailyPayout": 6,
+          "createdAt": "2026-07-17T22:11:21.849Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T22:11:21.849Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        },
+        {
+          "id": "5d053c24-d7a9-4cd8-bd7e-096b0bd8d8e5",
+          "date": "2026-07-18",
+          "quantities": [
+            5
+          ],
+          "tailorItemQuantities": [
+            [
+              5
+            ]
+          ],
+          "dailyPayout": 15,
+          "createdAt": "2026-07-17T22:11:33.387Z",
+          "createdBy": "shizakhizar20@gmail.com",
+          "updatedAt": "2026-07-17T22:11:33.387Z",
+          "updatedBy": "shizakhizar20@gmail.com"
+        }
+      ],
+      "weeklySettlements": [],
+      "createdAt": "2026-07-17T22:10:59.691Z",
+      "createdBy": "shizakhizar20@gmail.com",
+      "updatedAt": "2026-07-17T22:11:33.387Z",
+      "updatedBy": "shizakhizar20@gmail.com"
+    },
+    {
       "id": "befe6917-7cf9-4fae-bf43-2f98d35a87e5",
       "name": "hospital",
       "startDate": "2026-07-17",
@@ -496,6 +565,13 @@
       }
     ]
   },
-  "storeItems": [],
-  "machineRecords": []
+  "storeItems": [
+    {
+      "id": "store_item_9rtha8dlmrphr90d",
+      "name": "soap",
+      "quantity": 5
+    }
+  ],
+  "machineRecords": [],
+  "templateVault": []
 }
