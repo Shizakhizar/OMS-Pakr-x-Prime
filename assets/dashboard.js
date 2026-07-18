@@ -1,7 +1,9 @@
 (function () {
   const sessionStorageKey = 'oms_auth_session';
   const activeCompany = document.body.dataset.company || 'prime_fabric';
-  const backendUrl = document.body.dataset.backendUrl || 'http://localhost:4000';
+  const backendUrl = Object.prototype.hasOwnProperty.call(document.body.dataset, 'backendUrl')
+    ? document.body.dataset.backendUrl
+    : 'http://localhost:4000';
 
   function getCompanyAssetBase(company) {
     if (company === 'pakrose') {

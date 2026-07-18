@@ -1,5 +1,7 @@
 (function () {
-  const backendUrl = document.body.dataset.backendUrl || 'http://localhost:4000';
+  const backendUrl = Object.prototype.hasOwnProperty.call(document.body.dataset, 'backendUrl')
+    ? document.body.dataset.backendUrl
+    : 'http://localhost:4000';
   const sessionStorageKey = 'oms_auth_session';
 
   function getCompanyAssetBase(company) {
@@ -270,7 +272,7 @@
     })
     .catch(function () {
       showMessage(
-        'Cannot reach the backend. Start the backend server on http://localhost:4000.',
+        'Cannot reach the backend. Please check the live server connection.',
         'error'
       );
     });
