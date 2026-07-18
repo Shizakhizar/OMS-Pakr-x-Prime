@@ -6,6 +6,7 @@ const { allowedEmails, isAllowedEmail } = require('./config/auth');
 const { JsonWorkspaceRepository } = require('./repositories/jsonWorkspaceRepository');
 const { PostgresWorkspaceRepository } = require('./repositories/postgresWorkspaceRepository');
 const { JsonPrimeFabricRepository } = require('./repositories/jsonPrimeFabricRepository');
+const { PostgresPrimeFabricRepository } = require('./repositories/postgresPrimeFabricRepository');
 const { WorkspaceService } = require('./services/workspaceService');
 const { PrimeFabricService } = require('./services/primeFabricService');
 const { createCompanyWorkspaceController } = require('./controllers/companyWorkspaceController');
@@ -19,6 +20,7 @@ function createApp() {
   const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
   const frontendOrigin = process.env.FRONTEND_ORIGIN || '';
   const usePostgresPakrose = String(process.env.USE_POSTGRES_PAKROSE || '').trim().toLowerCase() === 'true';
+  const usePostgresPrimeFabric = String(process.env.USE_POSTGRES_PRIME_FABRIC || '').trim().toLowerCase() === 'true';
   const googleClient = googleClientId ? new OAuth2Client(googleClientId) : null;
 
   const jsonWorkspaceRepository = new JsonWorkspaceRepository({
@@ -31,9 +33,14 @@ function createApp() {
     : jsonWorkspaceRepository;
   const workspaceService = new WorkspaceService(repository);
   const workspaceController = createCompanyWorkspaceController(workspaceService);
-  const primeFabricRepository = new JsonPrimeFabricRepository({
+  const jsonPrimeFabricRepository = new JsonPrimeFabricRepository({
     filePath: path.join(__dirname, '..', 'data', 'prime-fabric', 'workspace.json'),
   });
+  const primeFabricRepository = usePostgresPrimeFabric
+    ? new PostgresPrimeFabricRepository({
+        fallbackRepository: jsonPrimeFabricRepository,
+      })
+    : jsonPrimeFabricRepository;
   const primeFabricService = new PrimeFabricService(primeFabricRepository);
   const primeFabricController = createPrimeFabricController(primeFabricService);
 

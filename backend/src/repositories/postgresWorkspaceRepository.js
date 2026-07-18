@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { HttpError } = require('../lib/errors');
 
 const defaultWorkspaceData = {
   fundingHistory: [],
@@ -32,9 +33,39 @@ function toIsoString(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function toDateOnlyString(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    const dateMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2})/);
+
+    if (dateMatch) {
+      return dateMatch[1];
+    }
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
+}
+
 class PostgresWorkspaceRepository {
   constructor(options = {}) {
     this.fallbackRepository = options.fallbackRepository || null;
+  }
+
+  async readWorkspaceWithFallback(companyId) {
+    return this.readWorkspace(companyId);
   }
 
   async readWorkspace(companyId) {
@@ -70,7 +101,7 @@ class PostgresWorkspaceRepository {
       fundingHistory: fundingHistoryResult.rows.map(function (row) {
         return {
           id: row.id,
-          date: row.entry_date,
+          date: toDateOnlyString(row.entry_date),
           amount: toNumber(row.amount),
           note: row.note || '',
           createdAt: toIsoString(row.created_at),
@@ -80,7 +111,7 @@ class PostgresWorkspaceRepository {
       dailyExpenses: dailyExpensesResult.rows.map(function (row) {
         return {
           id: row.id,
-          date: row.expense_date,
+          date: toDateOnlyString(row.expense_date),
           description: row.description,
           amount: toNumber(row.amount),
           createdAt: toIsoString(row.created_at),
@@ -129,7 +160,7 @@ class PostgresWorkspaceRepository {
           .map(function (expenseRow) {
             return {
               id: expenseRow.id,
-              date: expenseRow.expense_date,
+              date: toDateOnlyString(expenseRow.expense_date),
               description: expenseRow.description,
               amountSpent: toNumber(expenseRow.amount),
               paidBy: expenseRow.paid_by || '',
@@ -286,6 +317,298 @@ class PostgresWorkspaceRepository {
     } finally {
       client.release();
     }
+  }
+
+  async createOrganization(companyId, sector, organization) {
+    if (!isPakroseCompany(companyId)) {
+      if (this.fallbackRepository && typeof this.fallbackRepository.createOrganization === 'function') {
+        return this.fallbackRepository.createOrganization(companyId, sector, organization);
+      }
+
+      return this.fallbackRepository
+        ? this.fallbackRepository.readWorkspace(companyId).then(async (workspace) => {
+            workspace[sector].unshift(organization);
+            await this.fallbackRepository.writeWorkspace(companyId, workspace);
+            return workspace;
+          })
+        : { ...defaultWorkspaceData };
+    }
+
+    await pool.query(
+      `INSERT INTO workspace_organizations (id, name, category, funding_total, created_at, created_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        organization.id,
+        organization.name,
+        sector,
+        toNumber(organization.fundingTotal),
+        organization.createdAt || new Date().toISOString(),
+        organization.createdBy || '',
+        organization.updatedAt || null,
+      ]
+    );
+
+    return this.readWorkspace(companyId);
+  }
+
+  async updateOrganization(companyId, organizationId, changes) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query(
+      `UPDATE workspace_organizations
+       SET name = $2, updated_at = $3
+       WHERE id = $1`,
+      [organizationId, changes.name, changes.updatedAt || new Date().toISOString()]
+    );
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Organization not found.');
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async deleteOrganization(companyId, organizationId) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM workspace_daily_expenses WHERE org_id = $1', [organizationId]);
+      const result = await client.query('DELETE FROM workspace_organizations WHERE id = $1', [organizationId]);
+
+      if (!result.rowCount) {
+        throw new HttpError(404, 'Organization not found.');
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async addOrganizationExpense(companyId, organizationId, expenseEntry) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const organizationResult = await pool.query('SELECT id FROM workspace_organizations WHERE id = $1', [organizationId]);
+
+    if (!organizationResult.rowCount) {
+      throw new HttpError(404, 'Organization not found.');
+    }
+
+    await pool.query(
+      `INSERT INTO workspace_daily_expenses (id, org_id, description, amount, expense_date, paid_by, created_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        expenseEntry.id,
+        organizationId,
+        expenseEntry.description,
+        toNumber(expenseEntry.amountSpent),
+        toDateOnlyString(expenseEntry.date),
+        expenseEntry.paidBy || '',
+        expenseEntry.createdAt || new Date().toISOString(),
+        expenseEntry.createdBy || '',
+      ]
+    );
+
+    return this.readWorkspace(companyId);
+  }
+
+  async deleteOrganizationExpense(companyId, organizationId, expenseId) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query('DELETE FROM workspace_daily_expenses WHERE id = $1 AND org_id = $2', [expenseId, organizationId]);
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Organization expense not found.');
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async createFundingEntry(companyId, fundingEntry) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    await pool.query(
+      `INSERT INTO workspace_funding_history (id, company, entry_date, amount, note, created_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        fundingEntry.id,
+        'pakrose',
+        toDateOnlyString(fundingEntry.date),
+        toNumber(fundingEntry.amount),
+        fundingEntry.note || '',
+        fundingEntry.createdAt || new Date().toISOString(),
+        fundingEntry.createdBy || '',
+      ]
+    );
+
+    return this.readWorkspace(companyId);
+  }
+
+  async deleteFundingEntry(companyId, fundingEntryId) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query('DELETE FROM workspace_funding_history WHERE id = $1 AND company = $2', [
+      fundingEntryId,
+      'pakrose',
+    ]);
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Funding entry not found.');
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async createDailyExpense(companyId, dailyExpense) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    await pool.query(
+      `INSERT INTO workspace_general_daily_expenses (id, company, expense_date, description, amount, created_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        dailyExpense.id,
+        'pakrose',
+        toDateOnlyString(dailyExpense.date),
+        dailyExpense.description,
+        toNumber(dailyExpense.amount),
+        dailyExpense.createdAt || new Date().toISOString(),
+        dailyExpense.createdBy || '',
+      ]
+    );
+
+    return this.readWorkspace(companyId);
+  }
+
+  async deleteDailyExpense(companyId, expenseId) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query(
+      'DELETE FROM workspace_general_daily_expenses WHERE id = $1 AND company = $2',
+      [expenseId, 'pakrose']
+    );
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Daily expense not found.');
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async createStoreItem(companyId, storeItem) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    await pool.query(
+      `INSERT INTO workspace_store_items (id, company, item_name, quantity, created_at, created_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        storeItem.id,
+        'pakrose',
+        storeItem.name,
+        Number(storeItem.quantity || 0),
+        storeItem.createdAt || new Date().toISOString(),
+        storeItem.createdBy || '',
+        storeItem.updatedAt || null,
+      ]
+    );
+
+    return this.readWorkspace(companyId);
+  }
+
+  async updateStoreItem(companyId, itemId, changes) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query(
+      `UPDATE workspace_store_items
+       SET quantity = $2, updated_at = $3
+       WHERE id = $1 AND company = $4`,
+      [itemId, Number(changes.quantity || 0), changes.updatedAt || new Date().toISOString(), 'pakrose']
+    );
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Store item not found.');
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async deleteStoreItem(companyId, itemId) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query('DELETE FROM workspace_store_items WHERE id = $1 AND company = $2', [itemId, 'pakrose']);
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Store item not found.');
+    }
+
+    return this.readWorkspace(companyId);
+  }
+
+  async createTemplateFile(companyId, file) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    await pool.query(
+      `INSERT INTO template_vault_files (id, company, file_name, extension, content_data_url, file_size, mime_type, uploaded_at, uploaded_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        file.id,
+        'pakrose',
+        file.name,
+        file.extension || '',
+        file.contentDataUrl,
+        0,
+        file.mimeType || '',
+        file.uploadedAt || new Date().toISOString(),
+        file.uploadedBy || '',
+      ]
+    );
+
+    return this.readWorkspace(companyId);
+  }
+
+  async deleteTemplateFile(companyId, fileId) {
+    if (!isPakroseCompany(companyId)) {
+      return this.fallbackRepository ? this.fallbackRepository.readWorkspace(companyId) : { ...defaultWorkspaceData };
+    }
+
+    const result = await pool.query('DELETE FROM template_vault_files WHERE id = $1 AND company = $2', [fileId, 'pakrose']);
+
+    if (!result.rowCount) {
+      throw new HttpError(404, 'Template file not found.');
+    }
+
+    return this.readWorkspace(companyId);
   }
 }
 

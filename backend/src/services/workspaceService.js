@@ -17,6 +17,14 @@ class WorkspaceService {
     this.repository = repository;
   }
 
+  async runRepositoryAction(actionName, fallbackOperation) {
+    if (this.repository && typeof this.repository[actionName] === 'function') {
+      return this.repository[actionName].apply(this.repository, Array.prototype.slice.call(arguments, 2));
+    }
+
+    return fallbackOperation();
+  }
+
   async getWorkspace(companyId) {
     assertEnabledCompany(companyId);
     return this.repository.readWorkspace(companyId);
@@ -31,8 +39,6 @@ class WorkspaceService {
   async createOrganization(companyId, sector, payload, authContext) {
     requireOneOf(sector, organizationSectors, 'sector');
     const name = requireString(payload.name, 'name');
-    const workspace = await this.getWorkspace(companyId);
-
     const organization = {
       id: randomUUID(),
       name,
@@ -41,42 +47,68 @@ class WorkspaceService {
       entries: [],
     };
 
-    workspace[sector].unshift(organization);
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    return this.runRepositoryAction(
+      'createOrganization',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        workspace[sector].unshift(organization);
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      sector,
+      organization
+    );
   }
 
   async updateOrganization(companyId, organizationId, payload) {
     const name = requireString(payload.name, 'name');
-    const { workspace, organization } = await this.getOrganizationContext(companyId, organizationId);
-    organization.name = name;
-    organization.updatedAt = new Date().toISOString();
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    const updatedAt = new Date().toISOString();
+
+    return this.runRepositoryAction(
+      'updateOrganization',
+      async () => {
+        const { workspace, organization } = await this.getOrganizationContext(companyId, organizationId);
+        organization.name = name;
+        organization.updatedAt = updatedAt;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      organizationId,
+      { name, updatedAt }
+    );
   }
 
   async deleteOrganization(companyId, organizationId) {
-    const workspace = await this.getWorkspace(companyId);
-    let removed = false;
+    return this.runRepositoryAction(
+      'deleteOrganization',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        let removed = false;
 
-    organizationSectors.forEach(function (sector) {
-      const nextItems = workspace[sector].filter(function (organization) {
-        const keep = organization.id !== organizationId;
-        if (!keep) {
-          removed = true;
+        organizationSectors.forEach(function (sector) {
+          const nextItems = workspace[sector].filter(function (organization) {
+            const keep = organization.id !== organizationId;
+            if (!keep) {
+              removed = true;
+            }
+            return keep;
+          });
+
+          workspace[sector] = nextItems;
+        });
+
+        if (!removed) {
+          throw new HttpError(404, 'Organization not found.');
         }
-        return keep;
-      });
 
-      workspace[sector] = nextItems;
-    });
-
-    if (!removed) {
-      throw new HttpError(404, 'Organization not found.');
-    }
-
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      organizationId
+    );
   }
 
   async addOrganizationExpense(companyId, organizationId, payload, authContext) {
@@ -84,9 +116,7 @@ class WorkspaceService {
     const description = requireString(payload.description, 'description');
     const amountSpent = requirePositiveNumber(payload.amountSpent, 'amountSpent');
     const paidBy = requireString(payload.paidBy, 'paidBy');
-    const { workspace, organization } = await this.getOrganizationContext(companyId, organizationId);
-
-    organization.entries.unshift({
+    const expenseEntry = {
       id: randomUUID(),
       date,
       description,
@@ -94,25 +124,43 @@ class WorkspaceService {
       paidBy,
       createdAt: new Date().toISOString(),
       createdBy: authContext.email,
-    });
+    };
 
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    return this.runRepositoryAction(
+      'addOrganizationExpense',
+      async () => {
+        const { workspace, organization } = await this.getOrganizationContext(companyId, organizationId);
+        organization.entries.unshift(expenseEntry);
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      organizationId,
+      expenseEntry
+    );
   }
 
   async deleteOrganizationExpense(companyId, organizationId, expenseId) {
-    const { workspace, organization } = await this.getOrganizationContext(companyId, organizationId);
-    const nextEntries = organization.entries.filter(function (entry) {
-      return entry.id !== expenseId;
-    });
+    return this.runRepositoryAction(
+      'deleteOrganizationExpense',
+      async () => {
+        const { workspace, organization } = await this.getOrganizationContext(companyId, organizationId);
+        const nextEntries = organization.entries.filter(function (entry) {
+          return entry.id !== expenseId;
+        });
 
-    if (nextEntries.length === organization.entries.length) {
-      throw new HttpError(404, 'Organization expense not found.');
-    }
+        if (nextEntries.length === organization.entries.length) {
+          throw new HttpError(404, 'Organization expense not found.');
+        }
 
-    organization.entries = nextEntries;
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        organization.entries = nextEntries;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      organizationId,
+      expenseId
+    );
   }
 
   async listFundingEntries(companyId) {
@@ -124,34 +172,48 @@ class WorkspaceService {
     const date = requireDateString(payload.date, 'date');
     const amount = requirePositiveNumber(payload.amount, 'amount');
     const note = String(payload.note || '').trim();
-    const workspace = await this.getWorkspace(companyId);
-
-    workspace.fundingHistory.push({
+    const fundingEntry = {
       id: randomUUID(),
       date,
       amount,
       note,
       createdAt: new Date().toISOString(),
       createdBy: authContext.email,
-    });
+    };
 
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    return this.runRepositoryAction(
+      'createFundingEntry',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        workspace.fundingHistory.push(fundingEntry);
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      fundingEntry
+    );
   }
 
   async deleteFundingEntry(companyId, fundingEntryId) {
-    const workspace = await this.getWorkspace(companyId);
-    const nextEntries = workspace.fundingHistory.filter(function (entry) {
-      return entry.id !== fundingEntryId;
-    });
+    return this.runRepositoryAction(
+      'deleteFundingEntry',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        const nextEntries = workspace.fundingHistory.filter(function (entry) {
+          return entry.id !== fundingEntryId;
+        });
 
-    if (nextEntries.length === workspace.fundingHistory.length) {
-      throw new HttpError(404, 'Funding entry not found.');
-    }
+        if (nextEntries.length === workspace.fundingHistory.length) {
+          throw new HttpError(404, 'Funding entry not found.');
+        }
 
-    workspace.fundingHistory = nextEntries;
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        workspace.fundingHistory = nextEntries;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      fundingEntryId
+    );
   }
 
   async listDailyExpenses(companyId) {
@@ -163,34 +225,48 @@ class WorkspaceService {
     const date = requireDateString(payload.date, 'date');
     const description = requireString(payload.description, 'description');
     const amount = requirePositiveNumber(payload.amount, 'amount');
-    const workspace = await this.getWorkspace(companyId);
-
-    workspace.dailyExpenses.unshift({
+    const dailyExpense = {
       id: randomUUID(),
       date,
       description,
       amount,
       createdAt: new Date().toISOString(),
       createdBy: authContext.email,
-    });
+    };
 
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    return this.runRepositoryAction(
+      'createDailyExpense',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        workspace.dailyExpenses.unshift(dailyExpense);
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      dailyExpense
+    );
   }
 
   async deleteDailyExpense(companyId, expenseId) {
-    const workspace = await this.getWorkspace(companyId);
-    const nextEntries = workspace.dailyExpenses.filter(function (entry) {
-      return entry.id !== expenseId;
-    });
+    return this.runRepositoryAction(
+      'deleteDailyExpense',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        const nextEntries = workspace.dailyExpenses.filter(function (entry) {
+          return entry.id !== expenseId;
+        });
 
-    if (nextEntries.length === workspace.dailyExpenses.length) {
-      throw new HttpError(404, 'Daily expense not found.');
-    }
+        if (nextEntries.length === workspace.dailyExpenses.length) {
+          throw new HttpError(404, 'Daily expense not found.');
+        }
 
-    workspace.dailyExpenses = nextEntries;
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        workspace.dailyExpenses = nextEntries;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      expenseId
+    );
   }
 
   async listStoreItems(companyId) {
@@ -201,50 +277,74 @@ class WorkspaceService {
   async createStoreItem(companyId, payload, authContext) {
     const name = requireString(payload.name, 'name');
     const quantity = payload.quantity == null ? 0 : requireNonNegativeNumber(payload.quantity, 'quantity');
-    const workspace = await this.getWorkspace(companyId);
-
-    workspace.store.unshift({
+    const storeItem = {
       id: randomUUID(),
       name,
       quantity,
       createdAt: new Date().toISOString(),
       createdBy: authContext.email,
-    });
+    };
 
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    return this.runRepositoryAction(
+      'createStoreItem',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        workspace.store.unshift(storeItem);
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      storeItem
+    );
   }
 
   async updateStoreItem(companyId, itemId, payload) {
     const quantity = requireNonNegativeNumber(payload.quantity, 'quantity');
-    const workspace = await this.getWorkspace(companyId);
-    const item = workspace.store.find(function (entry) {
-      return entry.id === itemId;
-    });
+    const updatedAt = new Date().toISOString();
 
-    if (!item) {
-      throw new HttpError(404, 'Store item not found.');
-    }
+    return this.runRepositoryAction(
+      'updateStoreItem',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        const item = workspace.store.find(function (entry) {
+          return entry.id === itemId;
+        });
 
-    item.quantity = quantity;
-    item.updatedAt = new Date().toISOString();
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        if (!item) {
+          throw new HttpError(404, 'Store item not found.');
+        }
+
+        item.quantity = quantity;
+        item.updatedAt = updatedAt;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      itemId,
+      { quantity, updatedAt }
+    );
   }
 
   async deleteStoreItem(companyId, itemId) {
-    const workspace = await this.getWorkspace(companyId);
-    const nextItems = workspace.store.filter(function (entry) {
-      return entry.id !== itemId;
-    });
+    return this.runRepositoryAction(
+      'deleteStoreItem',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        const nextItems = workspace.store.filter(function (entry) {
+          return entry.id !== itemId;
+        });
 
-    if (nextItems.length === workspace.store.length) {
-      throw new HttpError(404, 'Store item not found.');
-    }
+        if (nextItems.length === workspace.store.length) {
+          throw new HttpError(404, 'Store item not found.');
+        }
 
-    workspace.store = nextItems;
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        workspace.store = nextItems;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      itemId
+    );
   }
 
   async listTemplateFiles(companyId) {
@@ -257,9 +357,7 @@ class WorkspaceService {
     const extension = requireOneOf(String(payload.extension || '').trim().toUpperCase(), allowedTemplateExtensions, 'extension');
     const mimeType = requireString(payload.mimeType, 'mimeType');
     const contentDataUrl = requireString(payload.contentDataUrl, 'contentDataUrl');
-    const workspace = await this.getWorkspace(companyId);
-
-    workspace.templateVault.unshift({
+    const templateFile = {
       id: randomUUID(),
       name,
       extension,
@@ -267,25 +365,41 @@ class WorkspaceService {
       contentDataUrl,
       uploadedAt: new Date().toISOString(),
       uploadedBy: authContext.email,
-    });
+    };
 
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+    return this.runRepositoryAction(
+      'createTemplateFile',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        workspace.templateVault.unshift(templateFile);
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      templateFile
+    );
   }
 
   async deleteTemplateFile(companyId, fileId) {
-    const workspace = await this.getWorkspace(companyId);
-    const nextFiles = workspace.templateVault.filter(function (entry) {
-      return entry.id !== fileId;
-    });
+    return this.runRepositoryAction(
+      'deleteTemplateFile',
+      async () => {
+        const workspace = await this.getWorkspace(companyId);
+        const nextFiles = workspace.templateVault.filter(function (entry) {
+          return entry.id !== fileId;
+        });
 
-    if (nextFiles.length === workspace.templateVault.length) {
-      throw new HttpError(404, 'Template file not found.');
-    }
+        if (nextFiles.length === workspace.templateVault.length) {
+          throw new HttpError(404, 'Template file not found.');
+        }
 
-    workspace.templateVault = nextFiles;
-    await this.repository.writeWorkspace(companyId, workspace);
-    return workspace;
+        workspace.templateVault = nextFiles;
+        await this.repository.writeWorkspace(companyId, workspace);
+        return workspace;
+      },
+      companyId,
+      fileId
+    );
   }
 
   async getTemplateFile(companyId, fileId) {

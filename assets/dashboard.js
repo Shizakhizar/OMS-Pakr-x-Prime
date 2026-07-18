@@ -185,7 +185,8 @@
     const workspaceScreen = document.getElementById('primeFabricWorkspace');
     const workspaceTitle = document.getElementById('workspaceTitle');
     const workspaceSubtitle = document.getElementById('workspaceSubtitle');
-    const workspaceHeaderPanel = workspaceTitle.closest('div') ? workspaceTitle.closest('div').parentElement : null;
+    const workspaceTitleWrapper = workspaceTitle ? workspaceTitle.closest('div') : null;
+    const workspaceHeaderPanel = workspaceTitleWrapper ? workspaceTitleWrapper.parentElement : null;
     const workspaceContent = document.getElementById('primeFabricWorkspaceContent');
     const newProjectButton = document.getElementById('newProjectButton');
     const projectModal = document.getElementById('primeFabricProjectModal');
@@ -382,21 +383,70 @@
     }
 
     function syncPrimeFabricWorkspaceFromLocal() {
-      return Promise.all([
-        syncPrimeFabricSection('/workspace/projects', { projects: primeFabricProjects }),
-        syncPrimeFabricSection('/workspace/attendance', { attendanceRecords: primeFabricAttendanceRecords }),
-        syncPrimeFabricSection('/workspace/store-items', { storeItems: primeFabricStoreItems }),
-        syncPrimeFabricSection('/workspace/machines', { machineRecords: primeFabricMachineRecords }),
-        syncPrimeFabricSection('/workspace/template-vault', { templateVault: primeFabricTemplateVault }),
-      ].map(function (request) {
-        return request.catch(function (error) {
+      return syncPrimeFabricSection('/workspace/projects', { projects: primeFabricProjects }, { silent: true })
+        .then(function () {
+          return syncPrimeFabricSection(
+            '/workspace/attendance',
+            { attendanceRecords: primeFabricAttendanceRecords },
+            { silent: true }
+          );
+        })
+        .then(function () {
+          return syncPrimeFabricSection('/workspace/store-items', { storeItems: primeFabricStoreItems }, { silent: true });
+        })
+        .then(function () {
+          return syncPrimeFabricSection('/workspace/machines', { machineRecords: primeFabricMachineRecords }, { silent: true });
+        })
+        .then(function () {
+          return syncPrimeFabricSection('/workspace/template-vault', { templateVault: primeFabricTemplateVault }, { silent: true });
+        })
+        .catch(function (error) {
           console.warn(error);
           return null;
         });
-      }));
     }
 
-    function fetchPrimeFabricWorkspace() {
+    function setButtonPending(button, isPending, pendingText, defaultText) {
+      if (!button) {
+        return;
+      }
+
+      button.disabled = Boolean(isPending);
+      button.innerText = isPending ? pendingText : defaultText;
+    }
+
+    function haveTailorAssignmentsChanged(currentTailors, nextTailors) {
+      if (!Array.isArray(currentTailors) || !Array.isArray(nextTailors) || currentTailors.length !== nextTailors.length) {
+        return true;
+      }
+
+      return currentTailors.some(function (tailor, index) {
+        const nextTailor = nextTailors[index];
+        return !nextTailor || String(tailor.assignedItemId || '') !== String(nextTailor.assignedItemId || '');
+      });
+    }
+
+    function shouldDeferPrimeFabricRender() {
+      const activeElement = document.activeElement;
+
+      if (projectModal && !projectModal.classList.contains('hidden')) {
+        return true;
+      }
+
+      if (storeModal && !storeModal.classList.contains('hidden')) {
+        return true;
+      }
+
+      return Boolean(
+        activeElement &&
+          workspaceScreen.contains(activeElement) &&
+          typeof activeElement.matches === 'function' &&
+          activeElement.matches('input, textarea, select')
+      );
+    }
+
+    function fetchPrimeFabricWorkspace(options) {
+      const requestOptions = options || {};
       return requestPrimeFabric('/workspace')
         .then(function (payload) {
           const backendWorkspace = payload && payload.workspace ? payload.workspace : {};
@@ -406,7 +456,7 @@
           }
 
           applyPrimeFabricWorkspace(backendWorkspace);
-          if (!workspaceScreen.classList.contains('hidden')) {
+          if (!workspaceScreen.classList.contains('hidden') && (!shouldDeferPrimeFabricRender() || requestOptions.forceRender)) {
             renderCurrentView();
           }
           return payload;
@@ -477,8 +527,12 @@
       return requestPrimeFabric('/projects/' + projectId + '/daily-entries', {
         method: 'PUT',
         body: JSON.stringify(entryPayload),
-      }).then(function () {
-        return fetchPrimeFabricWorkspace();
+      }).then(function (payload) {
+        if (payload && payload.item) {
+          replaceProjectInState(payload.item);
+        }
+
+        return payload;
       });
     }
 
@@ -486,8 +540,12 @@
       return requestPrimeFabric('/projects/' + projectId + '/weekly-settlements', {
         method: 'PUT',
         body: JSON.stringify(settlementPayload),
-      }).then(function () {
-        return fetchPrimeFabricWorkspace();
+      }).then(function (payload) {
+        if (payload && payload.item) {
+          replaceProjectInState(payload.item);
+        }
+
+        return payload;
       });
     }
 
@@ -681,9 +739,42 @@
       window.sessionStorage.removeItem(workspaceStateKey);
     }
 
+    function getDateOnlyValue(value) {
+      if (!value) {
+        return null;
+      }
+
+      if (typeof value === 'string') {
+        const trimmedValue = value.trim();
+        const dateMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          return dateMatch[1];
+        }
+      }
+
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const year = value.getUTCFullYear();
+        const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(value.getUTCDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+      }
+
+      return null;
+    }
+
     function formatDate(value) {
       if (!value) {
         return '-';
+      }
+
+      const dateOnlyValue = getDateOnlyValue(value);
+      if (dateOnlyValue) {
+        const parts = dateOnlyValue.split('-');
+        const year = Number(parts[0]);
+        const month = Number(parts[1]) - 1;
+        const day = Number(parts[2]);
+        const dateOnly = new Date(year, month, day);
+        return Number.isNaN(dateOnly.getTime()) ? value : dateOnly.toLocaleDateString();
       }
 
       const date = new Date(value);
@@ -703,7 +794,8 @@
     }
 
     function getCurrentDate() {
-      return new Date('2026-07-17T00:00:00');
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
 
     function getDaysRemaining(project) {
@@ -1023,11 +1115,7 @@
         return 0;
       }
 
-      if (deadlineDays === 1) {
-        return 1;
-      }
-
-      return Math.max(deadlineDays - 1, 1);
+      return deadlineDays;
     }
 
     function getProjectDailyTarget(project) {
@@ -1454,7 +1542,7 @@
       projectModal.classList.add('hidden');
       projectModal.classList.remove('flex');
       projectNameInput.value = '';
-      projectStartDateInput.value = new Date().toISOString().slice(0, 10);
+      projectStartDateInput.value = formatDateInputValue(getCurrentDate());
       projectDeadlineInput.value = '';
       projectAdvancePaymentInput.value = '';
       renderProjectOrderItems([createEmptyOrderItem()]);
@@ -1466,7 +1554,7 @@
     function openProjectModal() {
       projectModal.classList.remove('hidden');
       projectModal.classList.add('flex');
-      projectStartDateInput.value = new Date().toISOString().slice(0, 10);
+      projectStartDateInput.value = formatDateInputValue(getCurrentDate());
       projectAdvancePaymentInput.value = '';
       renderProjectOrderItems([createEmptyOrderItem()]);
       projectLockedAmountValue.innerText = 'Rs 0';
@@ -1487,11 +1575,39 @@
     function showProjectModalError(message) {
       projectModalError.innerText = message;
       projectModalError.classList.remove('hidden');
+      projectModalError.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
     function getAttendanceMeta(records) {
       const meta = records && typeof records.__meta === 'object' && !Array.isArray(records.__meta) ? records.__meta : {};
       return meta;
+    }
+
+    function normalizeAttendanceDateValue(value) {
+      const rawValue = String(value || '').trim();
+
+      if (!rawValue) {
+        return '';
+      }
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+        return rawValue;
+      }
+
+      const slashMatch = rawValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (slashMatch) {
+        const day = slashMatch[1].padStart(2, '0');
+        const month = slashMatch[2].padStart(2, '0');
+        const year = slashMatch[3];
+        return year + '-' + month + '-' + day;
+      }
+
+      const parsedDate = new Date(rawValue);
+      if (Number.isNaN(parsedDate.getTime())) {
+        return '';
+      }
+
+      return formatDateInputValue(parsedDate);
     }
 
     function normalizeAttendanceTeam(team) {
@@ -1570,7 +1686,7 @@
       records.__meta = Object.assign({}, meta, {
         team: normalizeAttendanceTeam(team),
       });
-      saveAttendanceRecords(records);
+      return saveAttendanceRecords(records);
     }
 
     function getEmptyAttendanceRows() {
@@ -1612,7 +1728,7 @@
       workspaceBackButton.classList.remove('hidden');
       newProjectButton.classList.add('hidden');
 
-      const todayDate = new Date().toISOString().slice(0, 10);
+      const todayDate = formatDateInputValue(getCurrentDate());
 
       workspaceContent.innerHTML = `
         <div class="space-y-4">
@@ -2393,8 +2509,14 @@
       }
 
       attendanceDateInput.addEventListener('change', function () {
-        renderAttendanceRows(attendanceDateInput.value);
-        attendanceMessage.innerText = 'Attendance loaded for ' + formatDate(attendanceDateInput.value) + '.';
+        const normalizedDate = normalizeAttendanceDateValue(attendanceDateInput.value);
+
+        if (normalizedDate && normalizedDate !== attendanceDateInput.value) {
+          attendanceDateInput.value = normalizedDate;
+        }
+
+        renderAttendanceRows(normalizedDate);
+        attendanceMessage.innerText = 'Attendance loaded for ' + formatDate(normalizedDate) + '.';
         attendanceMessage.className = 'text-sm text-slate-400';
       });
 
@@ -2440,20 +2562,37 @@
           return;
         }
 
-        saveAttendanceTeam(nextTeam);
-        setAttendanceTeamMessage('Attendance team saved successfully.', 'success');
+        saveAttendanceTeamButton.disabled = true;
+        setAttendanceTeamMessage('Saving attendance team...', 'default');
         renderAttendanceTeamEditor();
         renderAttendanceRows(attendanceDateInput.value);
         renderAttendanceHistory();
+        saveAttendanceTeam(nextTeam)
+          .then(function () {
+            setAttendanceTeamMessage('Attendance team saved successfully.', 'success');
+            renderAttendanceTeamEditor();
+            renderAttendanceRows(attendanceDateInput.value);
+            renderAttendanceHistory();
+          })
+          .catch(function (error) {
+            setAttendanceTeamMessage(error.message || 'Unable to save attendance team.', 'error');
+          })
+          .finally(function () {
+            saveAttendanceTeamButton.disabled = false;
+          });
       });
 
       saveAttendanceButton.addEventListener('click', function () {
-        const selectedDate = attendanceDateInput.value;
+        const selectedDate = normalizeAttendanceDateValue(attendanceDateInput.value);
 
         if (!selectedDate) {
           attendanceMessage.innerText = 'Please select a date before saving attendance.';
           attendanceMessage.className = 'text-sm text-rose-300';
           return;
+        }
+
+        if (selectedDate !== attendanceDateInput.value) {
+          attendanceDateInput.value = selectedDate;
         }
 
         const rows = collectAttendanceRows();
@@ -2464,6 +2603,10 @@
         }
         const records = loadAttendanceRecords();
         records[selectedDate] = rows;
+        saveAttendanceButton.disabled = true;
+        attendanceMessage.innerText = 'Saving attendance for ' + formatDate(selectedDate) + '...';
+        attendanceMessage.className = 'text-sm text-slate-300';
+        renderAttendanceHistory();
         saveAttendanceRecords(records)
           .then(function () {
             attendanceMessage.innerText = 'Attendance saved for ' + formatDate(selectedDate) + '.';
@@ -2473,6 +2616,9 @@
           .catch(function (error) {
             attendanceMessage.innerText = error.message || 'Unable to save attendance.';
             attendanceMessage.className = 'text-sm text-rose-300';
+          })
+          .finally(function () {
+            saveAttendanceButton.disabled = false;
           });
       });
 
@@ -2539,6 +2685,7 @@
           const previousValue = loadMachineRecords().find(function (machine) {
             return machine.id === select.dataset.machineId;
           });
+          select.disabled = true;
           const updatedMachines = loadMachineRecords().map(function (machine) {
             if (machine.id === select.dataset.machineId) {
               return {
@@ -2551,12 +2698,16 @@
             return machine;
           });
 
-          saveMachineRecords(updatedMachines).catch(function (error) {
-            if (previousValue) {
-              select.value = previousValue.status;
-            }
-            window.alert(error.message || 'Unable to update machine status.');
-          });
+          saveMachineRecords(updatedMachines)
+            .catch(function (error) {
+              if (previousValue) {
+                select.value = previousValue.status;
+              }
+              window.alert(error.message || 'Unable to update machine status.');
+            })
+            .finally(function () {
+              select.disabled = false;
+            });
         });
       });
     }
@@ -3143,7 +3294,7 @@
                 <p class="text-[11px] uppercase tracking-[0.24em] text-indigo-200">Daily target</p>
                 <p class="mt-3 text-2xl font-semibold text-white">${escapeHtml(String(dailyTarget || 0))}</p>
                 <p class="mt-2 text-sm text-slate-300">${escapeHtml(String(productionDays || 0))} production day${productionDays === 1 ? '' : 's'} planned</p>
-                <p class="mt-1 text-xs text-slate-400">Final day kept for packing and delivery.</p>
+                <p class="mt-1 text-xs text-slate-400">Daily target is now calculated across the full project deadline.</p>
                 <div class="mt-3 space-y-2">
                   ${dailyTargetsByItem
                     .map(function (item, index) {
@@ -3732,16 +3883,20 @@
             return;
           }
 
-          updatePrimeFabricProject(project.id, {
-            tailors: nextTailors,
-            dailyEntries: remapDailyEntriesForTailors(project, nextTailors),
-            teamLocked: true,
+          setButtonPending(saveProjectTeamButton, true, 'Saving Team...', 'Finalize Team');
+        updatePrimeFabricProject(project.id, {
+          tailors: nextTailors,
+          dailyEntries: remapDailyEntriesForTailors(project, nextTailors),
+          teamLocked: true,
+        })
+          .then(function () {
+            renderProjectDetail();
           })
-            .then(function () {
-              renderProjectDetail();
-            })
-            .catch(function (error) {
+          .catch(function (error) {
               window.alert(error.message || 'Unable to finalize team.');
+            })
+            .finally(function () {
+              setButtonPending(saveProjectTeamButton, false, 'Saving Team...', 'Finalize Team');
             });
         });
       }
@@ -3977,6 +4132,7 @@
             assignedItemId: currentSelect ? currentSelect.value : getTailorAssignedItemId(tailor, orderItems),
           });
         });
+        const assignmentsChanged = haveTailorAssignmentsChanged(getProjectTailors(latestProject), nextTailors);
 
         if (!quantityInputs.length) {
           setEntryMessage('No tailor rows are available for saving.', 'error');
@@ -4077,10 +4233,17 @@
           return;
         }
 
-        updatePrimeFabricProject(project.id, {
-          tailors: nextTailors,
-          dailyEntries: remapDailyEntriesForTailors(latestProject, nextTailors),
-        })
+        setButtonPending(saveAllTailorsDayButton, true, 'Saving...', 'Close Card');
+        setEntryMessage('Saving daily production for ' + formatDate(selectedDate) + '...', 'default');
+
+        const saveAssignmentsPromise = assignmentsChanged
+          ? updatePrimeFabricProject(project.id, {
+              tailors: nextTailors,
+              dailyEntries: remapDailyEntriesForTailors(latestProject, nextTailors),
+            })
+          : Promise.resolve();
+
+        saveAssignmentsPromise
           .then(function () {
             return savePrimeFabricDailyEntry(project.id, {
               date: selectedDate,
@@ -4096,6 +4259,9 @@
           })
           .catch(function (error) {
             setEntryMessage(error.message || 'Unable to save daily entry.', 'error');
+          })
+          .finally(function () {
+            setButtonPending(saveAllTailorsDayButton, false, 'Saving...', 'Close Card');
           });
       }
 
@@ -4113,6 +4279,8 @@
         select.addEventListener('change', function () {
           const weekKey = select.dataset.weeklyPaymentStatus;
           const nextStatus = select.value;
+          const previousStatus = select.dataset.previousStatus || '';
+          select.disabled = true;
 
           savePrimeFabricWeeklySettlement(project.id, {
             weekKey: weekKey,
@@ -4122,9 +4290,14 @@
               renderProjectDetail();
             })
             .catch(function (error) {
+              select.value = previousStatus || 'not_paid';
               window.alert(error.message || 'Unable to save weekly payment status.');
+            })
+            .finally(function () {
+              select.disabled = false;
             });
         });
+        select.dataset.previousStatus = select.value;
       });
 
       weekToggleButtons.forEach(function (button) {
@@ -4347,12 +4520,23 @@
         name: name,
         quantity: 0,
       });
-      saveStoreItems(nextItems);
-      closeStoreModal();
+      storeModalError.classList.add('hidden');
+      setButtonPending(saveStoreModalButton, true, 'Saving...', 'Add Item');
+      saveStoreItems(nextItems)
+        .then(function () {
+          closeStoreModal();
 
-      if (currentView === 'store') {
-        renderStoreRecord();
-      }
+          if (currentView === 'store') {
+            renderStoreRecord();
+          }
+        })
+        .catch(function (error) {
+          storeModalError.textContent = error.message || 'Unable to save the store item.';
+          storeModalError.classList.remove('hidden');
+        })
+        .finally(function () {
+          setButtonPending(saveStoreModalButton, false, 'Saving...', 'Add Item');
+        });
     });
     closeProjectModalButton.addEventListener('click', closeProjectModal);
     cancelProjectModalButton.addEventListener('click', closeProjectModal);
@@ -4406,6 +4590,8 @@
       const startDate = projectStartDateInput.value.trim();
       const deadlineDays = projectDeadlineInput.value.trim();
       const advancePaymentReceived = projectAdvancePaymentInput.value.trim();
+      projectModalError.classList.add('hidden');
+      projectModalError.innerText = '';
       const orderItems = getProjectOrderItemsFromInputs()
         .map(function (item) {
           return {
@@ -4439,6 +4625,33 @@
         return;
       }
 
+      if (
+        orderItems.some(function (item) {
+          return item.targetPieces === null || item.targetPieces <= 0;
+        })
+      ) {
+        showProjectModalError('Each order item needs a valid pieces value greater than 0.');
+        return;
+      }
+
+      if (
+        orderItems.some(function (item) {
+          return item.ratePerStitch === null || item.ratePerStitch < 0;
+        })
+      ) {
+        showProjectModalError('Each order item needs a valid tailor rate.');
+        return;
+      }
+
+      if (
+        orderItems.some(function (item) {
+          return item.clientAmount === null || item.clientAmount < 0;
+        })
+      ) {
+        showProjectModalError('Each order item needs a valid client amount.');
+        return;
+      }
+
       const lockedAmount = orderItems.reduce(function (sum, item) {
         return sum + getLockedAmount(item.clientAmount);
       }, 0);
@@ -4449,6 +4662,8 @@
         return;
       }
 
+      saveProjectButton.disabled = true;
+      saveProjectButton.innerText = 'Creating...';
       createPrimeFabricProject({
         name: name,
         startDate: startDate,
@@ -4485,6 +4700,10 @@
           showProjectModalError(
             errorMessage
           );
+        })
+        .finally(function () {
+          saveProjectButton.disabled = false;
+          saveProjectButton.innerText = 'Create Project';
         });
     });
 
@@ -4722,6 +4941,15 @@
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       });
+    }
+
+    function setButtonPending(button, isPending, pendingText, defaultText) {
+      if (!button) {
+        return;
+      }
+
+      button.disabled = Boolean(isPending);
+      button.innerText = isPending ? pendingText : defaultText;
     }
 
     function updateTotalAmountButton() {
@@ -5469,6 +5697,7 @@
         }
 
         try {
+          setButtonPending(addEntryButton, true, 'Saving...', 'Add Entry');
           const payload = await apiRequest(
             '/api/v1/companies/' + getApiCompanyId() + '/organizations/' + activeOrganizationId + '/expenses',
             {
@@ -5483,10 +5712,24 @@
           );
 
           applyWorkspacePayload(payload);
+          entryDescription.value = '';
+          entryAmount.value = '';
+          entryPaidBy.value = '';
           renderCurrentView();
         } catch (error) {
           window.alert(error.message);
+        } finally {
+          setButtonPending(addEntryButton, false, 'Saving...', 'Add Entry');
         }
+      });
+
+      [entryDate, entryDescription, entryAmount, entryPaidBy].forEach(function (field) {
+        field.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            addEntryButton.click();
+          }
+        });
       });
 
       Array.from(managementContent.querySelectorAll('.delete-entry')).forEach(function (button) {
@@ -5710,7 +5953,7 @@
     });
 
     totalAmountButton.addEventListener('click', function () {
-      fundingDateInput.value = new Date().toISOString().slice(0, 10);
+      fundingDateInput.value = formatDateInputValue(new Date());
       fundingAmountInput.value = '';
       fundingNoteInput.value = '';
       renderFundingModal();

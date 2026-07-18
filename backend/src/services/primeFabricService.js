@@ -16,8 +16,29 @@ class PrimeFabricService {
     this.repository = repository;
   }
 
+  async runRepositoryAction(actionName, fallbackOperation) {
+    if (this.repository && typeof this.repository[actionName] === 'function') {
+      return this.repository[actionName].apply(this.repository, Array.prototype.slice.call(arguments, 2));
+    }
+
+    return fallbackOperation();
+  }
+
   async getWorkspace() {
-    return this.repository.readWorkspace();
+    const workspace = await this.repository.readWorkspace();
+
+    workspace.projects = Array.isArray(workspace.projects)
+      ? workspace.projects.map(
+          function (project) {
+            return {
+              ...project,
+              status: this.getDerivedProjectStatus(project),
+            };
+          }.bind(this)
+        )
+      : [];
+
+    return workspace;
   }
 
   async saveProjects(projects) {
@@ -36,12 +57,18 @@ class PrimeFabricService {
   }
 
   async createProject(payload, authContext) {
-    const workspace = await this.getWorkspace();
     const project = this.buildProjectPayload(payload, authContext, null);
 
-    workspace.projects.unshift(project);
-    await this.repository.writeWorkspace(workspace);
-    return project;
+    return this.runRepositoryAction(
+      'createProject',
+      async () => {
+        const workspace = await this.getWorkspace();
+        workspace.projects.unshift(project);
+        await this.repository.writeWorkspace(workspace);
+        return project;
+      },
+      project
+    );
   }
 
   async updateProject(projectId, payload, authContext) {
@@ -55,28 +82,43 @@ class PrimeFabricService {
       authContext,
       project
     );
-    const projectIndex = workspace.projects.findIndex(function (item) {
-      return item.id === projectId;
-    });
 
-    workspace.projects[projectIndex] = nextProject;
-    await this.repository.writeWorkspace(workspace);
-    return nextProject;
+    return this.runRepositoryAction(
+      'updateProject',
+      async () => {
+        const projectIndex = workspace.projects.findIndex(function (item) {
+          return item.id === projectId;
+        });
+
+        workspace.projects[projectIndex] = nextProject;
+        await this.repository.writeWorkspace(workspace);
+        return nextProject;
+      },
+      projectId,
+      { __nextProject: nextProject },
+      authContext
+    );
   }
 
   async deleteProject(projectId) {
-    const workspace = await this.getWorkspace();
-    const nextProjects = workspace.projects.filter(function (project) {
-      return project.id !== projectId;
-    });
+    return this.runRepositoryAction(
+      'deleteProject',
+      async () => {
+        const workspace = await this.getWorkspace();
+        const nextProjects = workspace.projects.filter(function (project) {
+          return project.id !== projectId;
+        });
 
-    if (nextProjects.length === workspace.projects.length) {
-      throw new HttpError(404, 'Project not found.');
-    }
+        if (nextProjects.length === workspace.projects.length) {
+          throw new HttpError(404, 'Project not found.');
+        }
 
-    workspace.projects = nextProjects;
-    await this.repository.writeWorkspace(workspace);
-    return { ok: true };
+        workspace.projects = nextProjects;
+        await this.repository.writeWorkspace(workspace);
+        return { ok: true };
+      },
+      projectId
+    );
   }
 
   async saveDailyEntry(projectId, payload, authContext) {
@@ -110,10 +152,20 @@ class PrimeFabricService {
       project.dailyEntries.push(entry);
     }
 
+    project.status = this.getDerivedProjectStatus(project);
     project.updatedAt = new Date().toISOString();
     project.updatedBy = authContext.email;
-    await this.repository.writeWorkspace(workspace);
-    return entry;
+
+    return this.runRepositoryAction(
+      'saveDailyEntry',
+      async () => {
+        await this.repository.writeWorkspace(workspace);
+        return project;
+      },
+      projectId,
+      { __project: project, __entry: entry },
+      authContext
+    );
   }
 
   async saveWeeklySettlement(projectId, payload, authContext) {
@@ -161,10 +213,23 @@ class PrimeFabricService {
       project.weeklySettlements.push(nextRecord);
     }
 
+    project.status = this.getDerivedProjectStatus(project);
     project.updatedAt = new Date().toISOString();
     project.updatedBy = authContext.email;
-    await this.repository.writeWorkspace(workspace);
-    return nextRecord;
+
+    return this.runRepositoryAction(
+      'saveWeeklySettlement',
+      async () => {
+        await this.repository.writeWorkspace(workspace);
+        return project;
+      },
+      projectId,
+      {
+        __project: project,
+        __record: existingIndex >= 0 ? project.weeklySettlements[existingIndex] : project.weeklySettlements[project.weeklySettlements.length - 1],
+      },
+      authContext
+    );
   }
 
   async saveAttendanceRecords(attendanceRecords) {
@@ -433,11 +498,7 @@ class PrimeFabricService {
       return 0;
     }
 
-    if (deadlineDays === 1) {
-      return 1;
-    }
-
-    return Math.max(deadlineDays - 1, 1);
+    return deadlineDays;
   }
 
   getProjectProductionDueDate(project) {
@@ -477,7 +538,8 @@ class PrimeFabricService {
   }
 
   getCurrentDay() {
-    return new Date('2026-07-17T00:00:00');
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 
   isProjectFailed(project) {
